@@ -68,6 +68,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.apache.logging.log4j.LogManager;
@@ -99,12 +101,22 @@ public class MinecraftConnection extends ChannelInboundHandlerAdapter {
    * @param channel the channel on the connection
    * @param server  the Velocity instance
    */
+  public MinecraftConnection(Channel channel, VelocityServer server, AtomicReference<String> remoteAddress) {
+    this.channel = channel;
+    this.remoteAddress = remoteAddress.get() != null ? new InetSocketAddress(
+            remoteAddress.get(),
+            ((InetSocketAddress) channel.remoteAddress()).getPort()
+    ) : channel.remoteAddress();
+    this.server = server;
+    this.state = StateRegistry.HANDSHAKE;
+    this.sessionHandlers = new HashMap<>();
+  }
+
   public MinecraftConnection(Channel channel, VelocityServer server) {
     this.channel = channel;
     this.remoteAddress = channel.remoteAddress();
     this.server = server;
     this.state = StateRegistry.HANDSHAKE;
-
     this.sessionHandlers = new HashMap<>();
   }
 

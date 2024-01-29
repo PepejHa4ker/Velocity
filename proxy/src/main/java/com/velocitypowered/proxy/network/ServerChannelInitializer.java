@@ -17,17 +17,13 @@
 
 package com.velocitypowered.proxy.network;
 
-import static com.velocitypowered.proxy.network.Connections.FRAME_DECODER;
-import static com.velocitypowered.proxy.network.Connections.FRAME_ENCODER;
-import static com.velocitypowered.proxy.network.Connections.LEGACY_PING_DECODER;
-import static com.velocitypowered.proxy.network.Connections.LEGACY_PING_ENCODER;
-import static com.velocitypowered.proxy.network.Connections.MINECRAFT_DECODER;
-import static com.velocitypowered.proxy.network.Connections.MINECRAFT_ENCODER;
-import static com.velocitypowered.proxy.network.Connections.READ_TIMEOUT;
+import static com.velocitypowered.proxy.network.Connections.*;
+
 
 import com.velocitypowered.proxy.VelocityServer;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.HandshakeSessionHandler;
+import com.velocitypowered.proxy.network.websocket.HttpGetSniffer;
 import com.velocitypowered.proxy.protocol.ProtocolUtils;
 import com.velocitypowered.proxy.protocol.StateRegistry;
 import com.velocitypowered.proxy.protocol.netty.LegacyPingDecoder;
@@ -40,7 +36,12 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * Server channel initializer.
@@ -48,7 +49,9 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings("WeakerAccess")
 public class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
-  private final VelocityServer server;
+    private static final Logger LOGGER = LogManager.getLogger("ServerChannelInitializer");
+
+    private final VelocityServer server;
 
   public ServerChannelInitializer(final VelocityServer server) {
     this.server = server;
@@ -56,7 +59,15 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
   @Override
   protected void initChannel(final Channel ch) {
+    final AtomicReference<String> xRealIp = new AtomicReference<>();
     ch.pipeline()
+        .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer(httpRequest -> {
+          final String realIp = httpRequest.headers().get("x-real-ip");
+          LOGGER.info("Received x-real-ip header: {}", realIp);
+          if (realIp != null && !realIp.isEmpty()) {
+            xRealIp.set(realIp);
+          }
+        }))
         .addLast(LEGACY_PING_DECODER, new LegacyPingDecoder())
         .addLast(FRAME_DECODER, new MinecraftVarintFrameDecoder())
         .addLast(READ_TIMEOUT,
@@ -65,9 +76,12 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
         .addLast(LEGACY_PING_ENCODER, LegacyPingEncoder.INSTANCE)
         .addLast(FRAME_ENCODER, MinecraftVarintLengthEncoder.INSTANCE)
         .addLast(MINECRAFT_DECODER, new MinecraftDecoder(ProtocolUtils.Direction.SERVERBOUND))
+
         .addLast(MINECRAFT_ENCODER, new MinecraftEncoder(ProtocolUtils.Direction.CLIENTBOUND));
 
-    final MinecraftConnection connection = new MinecraftConnection(ch, this.server);
+
+    final MinecraftConnection connection = new MinecraftConnection(ch, this.server, xRealIp);
+
     connection.setActiveSessionHandler(StateRegistry.HANDSHAKE,
         new HandshakeSessionHandler(connection, this.server));
     ch.pipeline().addLast(Connections.HANDLER, connection);
