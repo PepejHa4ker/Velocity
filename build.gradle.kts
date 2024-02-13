@@ -7,9 +7,6 @@ plugins {
 subprojects {
     apply<JavaLibraryPlugin>()
 
-    apply(plugin = "velocity-checkstyle")
-    apply(plugin = "velocity-spotless")
-
     java {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(17))

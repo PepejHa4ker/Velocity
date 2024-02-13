@@ -36,6 +36,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.util.AttributeKey;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,6 +51,7 @@ import java.util.function.Supplier;
 public class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
     private static final Logger LOGGER = LogManager.getLogger("ServerChannelInitializer");
+    public static final AttributeKey<String> X_REAL_IP = AttributeKey.newInstance("x-real-iip");
 
     private final VelocityServer server;
 
@@ -59,14 +61,11 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
   @Override
   protected void initChannel(final Channel ch) {
-    final AtomicReference<String> xRealIp = new AtomicReference<>();
     ch.pipeline()
-        .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer(httpRequest -> {
+        .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer((ctx, httpRequest) -> {
           final String realIp = httpRequest.headers().get("x-real-ip");
           LOGGER.info("Received x-real-ip header: {}", realIp);
-          if (realIp != null && !realIp.isEmpty()) {
-            xRealIp.set(realIp);
-          }
+          ctx.channel().attr(X_REAL_IP).set(realIp);
         }))
         .addLast(LEGACY_PING_DECODER, new LegacyPingDecoder())
         .addLast(FRAME_DECODER, new MinecraftVarintFrameDecoder())
@@ -76,11 +75,10 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
         .addLast(LEGACY_PING_ENCODER, LegacyPingEncoder.INSTANCE)
         .addLast(FRAME_ENCODER, MinecraftVarintLengthEncoder.INSTANCE)
         .addLast(MINECRAFT_DECODER, new MinecraftDecoder(ProtocolUtils.Direction.SERVERBOUND))
-
         .addLast(MINECRAFT_ENCODER, new MinecraftEncoder(ProtocolUtils.Direction.CLIENTBOUND));
 
 
-    final MinecraftConnection connection = new MinecraftConnection(ch, this.server, xRealIp);
+    final MinecraftConnection connection = new MinecraftConnection(ch, this.server);
 
     connection.setActiveSessionHandler(StateRegistry.HANDSHAKE,
         new HandshakeSessionHandler(connection, this.server));

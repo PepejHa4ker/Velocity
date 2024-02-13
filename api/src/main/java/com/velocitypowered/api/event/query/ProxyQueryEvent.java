@@ -10,6 +10,8 @@ package com.velocitypowered.api.event.query;
 import com.google.common.base.Preconditions;
 import com.velocitypowered.api.event.annotation.AwaitingEvent;
 import com.velocitypowered.api.proxy.server.QueryResponse;
+import com.velocitypowered.api.proxy.server.ServerPing;
+
 import java.net.InetAddress;
 
 /**
