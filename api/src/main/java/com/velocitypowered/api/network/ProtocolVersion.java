@@ -21,8 +21,8 @@ import java.util.Set;
  * Represents each Minecraft protocol version.
  */
 public enum ProtocolVersion implements Ordered<ProtocolVersion> {
-  UNKNOWN(-1, "Unknown"),
-  LEGACY(-2, "Legacy"),
+  UNKNOWN(1, "Unknown"),
+  LEGACY(2, "Legacy"),
   MINECRAFT_1_7_2(4,
       "1.7.2", "1.7.3", "1.7.4", "1.7.5"),
   MINECRAFT_1_7_6(5,
