@@ -17,15 +17,13 @@
 
 package com.velocitypowered.proxy.network;
 
-import static com.velocitypowered.proxy.network.Connections.*;
-
-
 import com.velocitypowered.proxy.VelocityServer;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.HandshakeSessionHandler;
 import com.velocitypowered.proxy.network.websocket.HttpGetSniffer;
 import com.velocitypowered.proxy.protocol.ProtocolUtils;
 import com.velocitypowered.proxy.protocol.StateRegistry;
+import com.velocitypowered.proxy.protocol.netty.BlacklistedAddressHandler;
 import com.velocitypowered.proxy.protocol.netty.LegacyPingDecoder;
 import com.velocitypowered.proxy.protocol.netty.LegacyPingEncoder;
 import com.velocitypowered.proxy.protocol.netty.MinecraftDecoder;
@@ -41,8 +39,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
+
+import static com.velocitypowered.proxy.network.Connections.BLACKLISTED_ADDRESSES;
+import static com.velocitypowered.proxy.network.Connections.FRAME_DECODER;
+import static com.velocitypowered.proxy.network.Connections.FRAME_ENCODER;
+import static com.velocitypowered.proxy.network.Connections.LEGACY_PING_DECODER;
+import static com.velocitypowered.proxy.network.Connections.LEGACY_PING_ENCODER;
+import static com.velocitypowered.proxy.network.Connections.MINECRAFT_DECODER;
+import static com.velocitypowered.proxy.network.Connections.MINECRAFT_ENCODER;
+import static com.velocitypowered.proxy.network.Connections.READ_TIMEOUT;
+import static com.velocitypowered.proxy.network.Connections.WS_HTTP_GET_SNIFFER;
 
 /**
  * Server channel initializer.
@@ -55,37 +61,44 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
     private final VelocityServer server;
 
-  public ServerChannelInitializer(final VelocityServer server) {
-    this.server = server;
-  }
-
-  @Override
-  protected void initChannel(final Channel ch) {
-    ch.pipeline()
-        .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer((ctx, httpRequest) -> {
-          final String realIp = httpRequest.headers().get("x-real-ip");
-          LOGGER.info("Received x-real-ip header: {}", realIp);
-          ctx.channel().attr(X_REAL_IP).set(realIp);
-        }))
-        .addLast(LEGACY_PING_DECODER, new LegacyPingDecoder())
-        .addLast(FRAME_DECODER, new MinecraftVarintFrameDecoder())
-        .addLast(READ_TIMEOUT,
-            new ReadTimeoutHandler(this.server.getConfiguration().getReadTimeout(),
-                TimeUnit.MILLISECONDS))
-        .addLast(LEGACY_PING_ENCODER, LegacyPingEncoder.INSTANCE)
-        .addLast(FRAME_ENCODER, MinecraftVarintLengthEncoder.INSTANCE)
-        .addLast(MINECRAFT_DECODER, new MinecraftDecoder(ProtocolUtils.Direction.SERVERBOUND))
-        .addLast(MINECRAFT_ENCODER, new MinecraftEncoder(ProtocolUtils.Direction.CLIENTBOUND));
-
-
-    final MinecraftConnection connection = new MinecraftConnection(ch, this.server);
-
-    connection.setActiveSessionHandler(StateRegistry.HANDSHAKE,
-        new HandshakeSessionHandler(connection, this.server));
-    ch.pipeline().addLast(Connections.HANDLER, connection);
-
-    if (this.server.getConfiguration().isProxyProtocol()) {
-      ch.pipeline().addFirst(new HAProxyMessageDecoder());
+    public ServerChannelInitializer(final VelocityServer server) {
+        this.server = server;
     }
-  }
+
+    @Override
+    protected void initChannel(final Channel ch) {
+        ch.pipeline()
+          .addLast(BLACKLISTED_ADDRESSES, new BlacklistedAddressHandler(server))
+          .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer((ctx, httpRequest) -> {
+              final String realIp = httpRequest.headers().get("x-real-ip");
+              LOGGER.debug("Received x-real-ip header: {}", realIp);
+              ctx.channel().attr(X_REAL_IP).set(realIp);
+          }))
+          .addLast(LEGACY_PING_DECODER, new LegacyPingDecoder())
+          .addLast(FRAME_DECODER, new MinecraftVarintFrameDecoder())
+          .addLast(
+                  READ_TIMEOUT,
+                  new ReadTimeoutHandler(
+                          this.server.getConfiguration().getReadTimeout(),
+                          TimeUnit.MILLISECONDS
+                  )
+          )
+          .addLast(LEGACY_PING_ENCODER, LegacyPingEncoder.INSTANCE)
+          .addLast(FRAME_ENCODER, MinecraftVarintLengthEncoder.INSTANCE)
+          .addLast(MINECRAFT_DECODER, new MinecraftDecoder(ProtocolUtils.Direction.SERVERBOUND))
+          .addLast(MINECRAFT_ENCODER, new MinecraftEncoder(ProtocolUtils.Direction.CLIENTBOUND));
+
+
+        final MinecraftConnection connection = new MinecraftConnection(ch, this.server);
+
+        connection.setActiveSessionHandler(
+                StateRegistry.HANDSHAKE,
+                new HandshakeSessionHandler(connection, this.server)
+        );
+        ch.pipeline().addLast(Connections.HANDLER, connection);
+
+        if (this.server.getConfiguration().isProxyProtocol()) {
+            ch.pipeline().addFirst(new HAProxyMessageDecoder());
+        }
+    }
 }

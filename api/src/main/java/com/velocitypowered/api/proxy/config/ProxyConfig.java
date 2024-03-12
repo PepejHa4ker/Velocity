@@ -47,6 +47,13 @@ public interface ProxyConfig {
   boolean shouldQueryShowPlugins();
 
   /**
+   * List of addresses from which GameSpy 4 queries are blocked.
+   *
+   * @return list of blocked addresses
+   */
+  List<String> getBlockedAddresses();
+
+  /**
    * Get the MOTD component shown in the tab list.
    *
    * @return the motd component

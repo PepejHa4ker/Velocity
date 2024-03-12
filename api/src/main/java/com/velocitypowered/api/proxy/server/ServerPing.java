@@ -27,12 +27,12 @@ public final class ServerPing {
 
   private final Version version;
   private final @Nullable Players players;
-  private final net.kyori.adventure.text.Component description;
+  private final String description;
   private final @Nullable Favicon favicon;
   private final @Nullable ModInfo modinfo;
 
   public ServerPing(Version version, @Nullable Players players,
-      net.kyori.adventure.text.Component description, @Nullable Favicon favicon) {
+      String description, @Nullable Favicon favicon) {
     this(version, players, description, favicon, ModInfo.DEFAULT);
   }
 
@@ -46,7 +46,7 @@ public final class ServerPing {
    * @param modinfo the mods this server runs
    */
   public ServerPing(Version version, @Nullable Players players,
-      net.kyori.adventure.text.Component description, @Nullable Favicon favicon,
+      String description, @Nullable Favicon favicon,
       @Nullable ModInfo modinfo) {
     this.version = Preconditions.checkNotNull(version, "version");
     this.players = players;
@@ -63,8 +63,12 @@ public final class ServerPing {
     return Optional.ofNullable(players);
   }
 
-  public net.kyori.adventure.text.Component getDescriptionComponent() {
+  public String getDescriptionComponent() {
     return description;
+  }
+
+  public String getDescriptionString() {
+    return description.toString();
   }
 
   public Optional<Favicon> getFavicon() {
@@ -150,7 +154,7 @@ public final class ServerPing {
     private final List<SamplePlayer> samplePlayers = new ArrayList<>();
     private String modType = "FML";
     private final List<ModInfo.Mod> mods = new ArrayList<>();
-    private net.kyori.adventure.text.Component description;
+    private String description;
     private @Nullable Favicon favicon;
     private boolean nullOutPlayers;
     private boolean nullOutModinfo;
@@ -223,7 +227,7 @@ public final class ServerPing {
       return this;
     }
 
-    public Builder description(net.kyori.adventure.text.Component description) {
+    public Builder description(String description) {
       this.description = Preconditions.checkNotNull(description, "description");
       return this;
     }
@@ -272,7 +276,7 @@ public final class ServerPing {
       return samplePlayers;
     }
 
-    public Optional<net.kyori.adventure.text.Component> getDescriptionComponent() {
+    public Optional<String> getDescriptionComponent() {
       return Optional.ofNullable(description);
     }
 

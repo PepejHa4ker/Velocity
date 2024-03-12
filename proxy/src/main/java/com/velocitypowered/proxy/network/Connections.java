@@ -37,6 +37,7 @@ public class Connections {
   public static final String READ_TIMEOUT = "read-timeout";
   public static final String PLAY_PACKET_QUEUE = "play-packet-queue";
   public static final String WS_HTTP_GET_SNIFFER = "ws_http_get_sniffer";
+  public static final String BLACKLISTED_ADDRESSES = "blacklisted-addresses";
 
   private Connections() {
     throw new AssertionError();

@@ -38,14 +38,15 @@ import com.velocitypowered.proxy.protocol.packet.LegacyDisconnect;
 import com.velocitypowered.proxy.protocol.packet.LegacyHandshakePacket;
 import com.velocitypowered.proxy.protocol.packet.LegacyPingPacket;
 import io.netty.buffer.ByteBuf;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Optional;
 
 /**
  * The initial handler used when a connection is established to the proxy. This will either
@@ -85,6 +86,11 @@ public class HandshakeSessionHandler implements MinecraftSessionHandler {
 
   @Override
   public boolean handle(HandshakePacket handshake) {
+    if (server.getConfiguration().getBlockedAddresses().contains(handshake.getServerAddress())) {
+      LOGGER.info("{} Tried to ping the server. Connection closed due to address are blacklisted", handshake.getServerAddress());
+      return true;
+    }
+
     InitialInboundConnection ic = new InitialInboundConnection(connection,
         cleanVhost(handshake.getServerAddress()), handshake);
     StateRegistry nextState = getStateForProtocol(handshake.getNextStatus());

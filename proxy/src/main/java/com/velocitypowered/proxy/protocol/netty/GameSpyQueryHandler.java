@@ -17,9 +17,6 @@
 
 package com.velocitypowered.proxy.protocol.netty;
 
-import static com.velocitypowered.api.event.query.ProxyQueryEvent.QueryType.BASIC;
-import static com.velocitypowered.api.event.query.ProxyQueryEvent.QueryType.FULL;
-
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableSet;
@@ -29,12 +26,14 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.QueryResponse;
-import com.velocitypowered.api.proxy.server.ServerPing;
 import com.velocitypowered.proxy.VelocityServer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.DatagramPacket;
+import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.apache.logging.log4j.LogManager;
 
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
@@ -48,13 +47,16 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.apache.logging.log4j.LogManager;
+import static com.velocitypowered.api.event.query.ProxyQueryEvent.QueryType.BASIC;
+import static com.velocitypowered.api.event.query.ProxyQueryEvent.QueryType.FULL;
 
 /**
  * Implements the GameSpy protocol for Velocity.
  */
 public class GameSpyQueryHandler extends SimpleChannelInboundHandler<DatagramPacket> {
+
+    private static final ComponentLogger logger = ComponentLogger
+            .logger(GameSpyQueryHandler.class);
 
     private static final short QUERY_MAGIC_FIRST = 0xFE;
     private static final short QUERY_MAGIC_SECOND = 0xFD;
@@ -116,6 +118,11 @@ public class GameSpyQueryHandler extends SimpleChannelInboundHandler<DatagramPac
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
         ByteBuf queryMessage = msg.content();
         InetAddress senderAddress = msg.sender().getAddress();
+        if (server.getConfiguration().getBlockedAddresses().contains(senderAddress.getHostAddress())) {
+            logger.info("{} Tried to query the server. No answer will provided due to address are blacklisted", senderAddress.getHostAddress());
+            ctx.close();
+            return;
+        }
 
         // Verify query packet magic
         if (queryMessage.readUnsignedByte() != QUERY_MAGIC_FIRST

@@ -164,11 +164,6 @@ public class MinecraftConnection extends ChannelInboundHandlerAdapter {
                 return;
             }
 
-            if (ctx.channel().hasAttr(ServerChannelInitializer.X_REAL_IP)) {
-                final String realIp = ctx.channel().attr(ServerChannelInitializer.X_REAL_IP).get();
-                this.remoteAddress = new InetSocketAddress(realIp, ((InetSocketAddress) channel.remoteAddress()).getPort());
-            }
-
             if (msg instanceof MinecraftPacket) {
                 MinecraftPacket pkt = (MinecraftPacket) msg;
                 if (!pkt.handle(activeSessionHandler)) {
@@ -347,7 +342,10 @@ public class MinecraftConnection extends ChannelInboundHandlerAdapter {
     public SocketAddress getRemoteAddress() {
         if (channel.hasAttr(ServerChannelInitializer.X_REAL_IP)) {
             final String realIp = channel.attr(ServerChannelInitializer.X_REAL_IP).get();
-            return new InetSocketAddress(realIp, ((InetSocketAddress) channel.remoteAddress()).getPort());
+            remoteAddress = new InetSocketAddress(
+                    realIp,
+                    ((InetSocketAddress) channel.remoteAddress()).getPort()
+            );
         }
         return remoteAddress;
     }

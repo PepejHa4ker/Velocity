@@ -61,6 +61,11 @@ public class StatusSessionHandler implements MinecraftSessionHandler {
   }
 
   @Override
+  public void connected() {
+
+  }
+
+  @Override
   public boolean handle(LegacyPingPacket packet) {
     if (this.pingReceived) {
       throw EXPECTED_AWAITING_REQUEST;

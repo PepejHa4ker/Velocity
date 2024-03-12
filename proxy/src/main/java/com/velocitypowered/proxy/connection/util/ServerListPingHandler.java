@@ -28,6 +28,8 @@ import com.velocitypowered.proxy.VelocityServer;
 import com.velocitypowered.proxy.config.PingPassthroughMode;
 import com.velocitypowered.proxy.config.VelocityConfiguration;
 import com.velocitypowered.proxy.server.VelocityRegisteredServer;
+import net.kyori.adventure.text.TextComponent;
+
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +58,7 @@ public class ServerListPingHandler {
             "Velocity " + ProtocolVersion.SUPPORTED_VERSION_STRING),
         new ServerPing.Players(server.getPlayerCount(), configuration.getShowMaxPlayers(),
             ImmutableList.of()),
-        configuration.getMotd(),
+        ((TextComponent) configuration.getMotd()).content(),
         configuration.getFavicon().orElse(null),
         configuration.isAnnounceForge() ? ModInfo.DEFAULT : null
     );
@@ -122,7 +124,7 @@ public class ServerListPingHandler {
             return new ServerPing(
                 fallback.getVersion(),
                 fallback.getPlayers().orElse(null),
-                response.getDescriptionComponent(),
+                response.getDescriptionString(),
                 fallback.getFavicon().orElse(null),
                 response.getModinfo().orElse(null)
             );

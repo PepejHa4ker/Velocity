@@ -32,6 +32,12 @@ import com.velocitypowered.proxy.config.migration.KeyAuthenticationMigration;
 import com.velocitypowered.proxy.config.migration.MotdMigration;
 import com.velocitypowered.proxy.util.AddressUtil;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -39,17 +45,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Velocity's configuration.
@@ -262,6 +264,11 @@ public class VelocityConfiguration implements ProxyConfig {
   @Override
   public String getQueryMap() {
     return query.getQueryMap();
+  }
+
+  @Override
+  public List<String> getBlockedAddresses() {
+    return query.getBlacklistedAddresses();
   }
 
   @Override
@@ -818,26 +825,29 @@ public class VelocityConfiguration implements ProxyConfig {
     @Expose
     private int queryPort = 25577;
     @Expose
+    private List<String> blacklistedAddresses;
+    @Expose
     private String queryMap = "Velocity";
     @Expose
     private boolean showPlugins = false;
 
-    private Query() {
-    }
 
-    private Query(boolean queryEnabled, int queryPort, String queryMap, boolean showPlugins) {
+
+    private Query(boolean queryEnabled, int queryPort, List<String> blacklistedAddresses, String queryMap, boolean showPlugins) {
       this.queryEnabled = queryEnabled;
       this.queryPort = queryPort;
+      this.blacklistedAddresses = blacklistedAddresses;
       this.queryMap = queryMap;
       this.showPlugins = showPlugins;
     }
 
     private Query(CommentedConfig config) {
-      if (config != null) {
+        if (config != null) {
         this.queryEnabled = config.getOrElse("enabled", false);
         this.queryPort = config.getIntOrElse("port", 25577);
         this.queryMap = config.getOrElse("map", "Velocity");
         this.showPlugins = config.getOrElse("show-plugins", false);
+        this.blacklistedAddresses = config.getOrElse("blacklisted-addresses", new ArrayList<>());
       }
     }
 
@@ -857,14 +867,19 @@ public class VelocityConfiguration implements ProxyConfig {
       return showPlugins;
     }
 
+    public List<String> getBlacklistedAddresses() {
+      return blacklistedAddresses;
+    }
+
     @Override
     public String toString() {
-      return "Query{"
-          + "queryEnabled=" + queryEnabled
-          + ", queryPort=" + queryPort
-          + ", queryMap='" + queryMap + '\''
-          + ", showPlugins=" + showPlugins
-          + '}';
+      return "Query{" +
+              "queryEnabled=" + queryEnabled +
+              ", queryPort=" + queryPort +
+              ", queryMap='" + queryMap + '\'' +
+              ", showPlugins=" + showPlugins +
+              ", blacklistedAddresses=" + blacklistedAddresses +
+              '}';
     }
   }
 
@@ -885,4 +900,5 @@ public class VelocityConfiguration implements ProxyConfig {
       return enabled;
     }
   }
+
 }

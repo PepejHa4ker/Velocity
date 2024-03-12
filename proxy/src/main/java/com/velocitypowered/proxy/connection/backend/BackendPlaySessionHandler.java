@@ -318,7 +318,7 @@ public class BackendPlaySessionHandler implements MinecraftSessionHandler {
         playerConnection.eventLoop()).thenAcceptAsync(pingEvent -> this.playerConnection.write(
             new ServerDataPacket(new ComponentHolder(
                 this.serverConn.ensureConnected().getProtocolVersion(),
-                pingEvent.getPing().getDescriptionComponent()),
+                pingEvent.getPing().getDescriptionString()),
                 pingEvent.getPing().getFavicon().orElse(null), packet.isSecureChatEnforced())),
         playerConnection.eventLoop());
     return true;
