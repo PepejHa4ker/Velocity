@@ -119,7 +119,7 @@ public class GameSpyQueryHandler extends SimpleChannelInboundHandler<DatagramPac
         ByteBuf queryMessage = msg.content();
         InetAddress senderAddress = msg.sender().getAddress();
         if (server.getConfiguration().getBlockedAddresses().contains(senderAddress.getHostAddress())) {
-            logger.info("{} Tried to query the server. No answer will provided due to address are blacklisted", senderAddress.getHostAddress());
+            logger.info("{} Tried to query the server. No answer will provided due to address being blacklisted", senderAddress.getHostAddress());
             ctx.close();
             return;
         }

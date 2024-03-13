@@ -4,7 +4,8 @@ import com.velocitypowered.proxy.VelocityServer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.DatagramPacket;
-import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 
@@ -12,9 +13,7 @@ public class BlacklistedAddressHandler extends SimpleChannelInboundHandler<Datag
 
     private final VelocityServer server;
 
-    private static final ComponentLogger logger = ComponentLogger
-            .logger(BlacklistedAddressHandler.class);
-
+    private static final Logger log = LoggerFactory.getLogger(BlacklistedAddressHandler.class)
     public BlacklistedAddressHandler(VelocityServer server) {
         this.server = server;
     }
@@ -24,9 +23,8 @@ public class BlacklistedAddressHandler extends SimpleChannelInboundHandler<Datag
             final DatagramPacket datagramPacket
     ) {
         InetSocketAddress receivedAddress = (InetSocketAddress) ctx.channel().remoteAddress();
-        logger.info("PINGING {}, {}", receivedAddress, receivedAddress.getHostName());
         if (server.getConfiguration().getBlockedAddresses().contains(receivedAddress.getHostName())) {
-            logger.info("{} Tried to ping the server. Connection closed due to address are blacklisted", receivedAddress.getHostName());
+            log.info("{} Tried to ping the server. Connection closed due to address being blacklisted", receivedAddress.getHostName());
             ctx.close();
         }
     }

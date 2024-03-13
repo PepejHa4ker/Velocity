@@ -87,7 +87,7 @@ public class HandshakeSessionHandler implements MinecraftSessionHandler {
   @Override
   public boolean handle(HandshakePacket handshake) {
     if (server.getConfiguration().getBlockedAddresses().contains(handshake.getServerAddress())) {
-      LOGGER.info("{} Tried to ping the server. Connection closed due to address are blacklisted", handshake.getServerAddress());
+      LOGGER.info("{} Tried to ping the server. Connection closed due to address being blacklisted", handshake.getServerAddress());
       return true;
     }
 
