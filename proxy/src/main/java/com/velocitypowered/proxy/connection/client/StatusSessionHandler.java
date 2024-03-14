@@ -58,12 +58,12 @@ public class StatusSessionHandler implements MinecraftSessionHandler {
       logger.info("{} is pinging the server with version {}", this.inbound,
           this.connection.getProtocolVersion());
     }
+    if (server.getConfiguration().getBlockedAddresses().contains(this.inbound.getRemoteAddress().getHostString())) {
+      logger.info("{} Connection closed due to an address being blacklisted", this.inbound);
+      this.connection.close();
+    }
   }
 
-  @Override
-  public void connected() {
-
-  }
 
   @Override
   public boolean handle(LegacyPingPacket packet) {

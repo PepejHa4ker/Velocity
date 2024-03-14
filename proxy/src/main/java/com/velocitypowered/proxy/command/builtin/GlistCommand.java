@@ -17,8 +17,6 @@
 
 package com.velocitypowered.proxy.command.builtin;
 
-import static com.mojang.brigadier.arguments.StringArgumentType.getString;
-
 import com.google.common.collect.ImmutableList;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -29,14 +27,17 @@ import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.permission.Tristate;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
-import java.util.List;
-import java.util.Optional;
+import com.velocitypowered.proxy.VelocityServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.List;
+import java.util.Optional;
+
+import static com.mojang.brigadier.arguments.StringArgumentType.getString;
 
 /**
  * Implements the Velocity default {@code /glist} command.
@@ -45,28 +46,22 @@ public class GlistCommand {
 
   private static final String SERVER_ARG = "server";
 
-  private final ProxyServer server;
-
-  public GlistCommand(ProxyServer server) {
-    this.server = server;
-  }
-
   /**
    * Registers this command.
    */
-  public void register() {
+  public static BrigadierCommand create(VelocityServer velocityServer) {
     final LiteralArgumentBuilder<CommandSource> rootNode = BrigadierCommand
         .literalArgumentBuilder("glist")
         .requires(source ->
             source.getPermissionValue("velocity.command.glist") == Tristate.TRUE)
-        .executes(this::totalCount);
+        .executes(ctx -> totalCount(ctx, velocityServer));
     final ArgumentCommandNode<CommandSource, String> serverNode = BrigadierCommand
         .requiredArgumentBuilder(SERVER_ARG, StringArgumentType.string())
         .suggests((context, builder) -> {
           final String argument = context.getArguments().containsKey(SERVER_ARG)
               ? context.getArgument(SERVER_ARG, String.class)
               : "";
-          for (RegisteredServer server : server.getAllServers()) {
+          for (RegisteredServer server : velocityServer.getAllServers()) {
             final String serverName = server.getServerInfo().getName();
             if (serverName.regionMatches(true, 0, argument, 0, argument.length())) {
               builder.suggest(serverName);
@@ -77,30 +72,30 @@ public class GlistCommand {
           }
           return builder.buildFuture();
         })
-        .executes(this::serverCount)
+        .executes(ctx -> serverCount(ctx, velocityServer))
         .build();
     rootNode.then(serverNode);
-    server.getCommandManager().register(new BrigadierCommand(rootNode));
+    return new BrigadierCommand(rootNode);
   }
 
-  private int totalCount(final CommandContext<CommandSource> context) {
+  private static int totalCount(final CommandContext<CommandSource> context, VelocityServer server) {
     final CommandSource source = context.getSource();
-    sendTotalProxyCount(source);
+    sendTotalProxyCount(source, server);
     source.sendMessage(
         Component.translatable("velocity.command.glist-view-all", NamedTextColor.YELLOW));
     return 1;
   }
 
-  private int serverCount(final CommandContext<CommandSource> context) {
+  private static int serverCount(final CommandContext<CommandSource> context, VelocityServer velocityServer) {
     final CommandSource source = context.getSource();
     final String serverName = getString(context, SERVER_ARG);
     if (serverName.equalsIgnoreCase("all")) {
-      for (final RegisteredServer server : BuiltinCommandUtil.sortedServerList(server)) {
+      for (final RegisteredServer server : BuiltinCommandUtil.sortedServerList(velocityServer)) {
         sendServerPlayers(source, server, true);
       }
-      sendTotalProxyCount(source);
+      sendTotalProxyCount(source, velocityServer);
     } else {
-      final Optional<RegisteredServer> registeredServer = server.getServer(serverName);
+      final Optional<RegisteredServer> registeredServer = velocityServer.getServer(serverName);
       if (registeredServer.isEmpty()) {
         source.sendMessage(
             CommandMessages.SERVER_DOES_NOT_EXIST
@@ -112,7 +107,7 @@ public class GlistCommand {
     return Command.SINGLE_SUCCESS;
   }
 
-  private void sendTotalProxyCount(CommandSource target) {
+  private static void sendTotalProxyCount(CommandSource target, VelocityServer server) {
     final int online = server.getPlayerCount();
     final TranslatableComponent.Builder msg = Component.translatable()
             .key(online == 1
@@ -123,7 +118,7 @@ public class GlistCommand {
     target.sendMessage(msg.build());
   }
 
-  private void sendServerPlayers(final CommandSource target,
+  private static void sendServerPlayers(final CommandSource target,
                                  final RegisteredServer server, final boolean fromAll) {
     final List<Player> onServer = ImmutableList.copyOf(server.getPlayersConnected());
     if (onServer.isEmpty() && fromAll) {

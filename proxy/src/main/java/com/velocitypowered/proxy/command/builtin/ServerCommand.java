@@ -17,8 +17,6 @@
 
 package com.velocitypowered.proxy.command.builtin;
 
-import static net.kyori.adventure.text.event.HoverEvent.showText;
-
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -30,13 +28,16 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
-import java.util.List;
-import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.List;
+import java.util.Optional;
+
+import static net.kyori.adventure.text.event.HoverEvent.showText;
 
 /**
  * Implements Velocity's {@code /server} command.

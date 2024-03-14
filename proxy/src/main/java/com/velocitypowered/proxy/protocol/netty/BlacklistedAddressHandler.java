@@ -13,7 +13,7 @@ public class BlacklistedAddressHandler extends SimpleChannelInboundHandler<Datag
 
     private final VelocityServer server;
 
-    private static final Logger log = LoggerFactory.getLogger(BlacklistedAddressHandler.class)
+    private static final Logger log = LoggerFactory.getLogger(BlacklistedAddressHandler.class);
     public BlacklistedAddressHandler(VelocityServer server) {
         this.server = server;
     }
@@ -23,8 +23,8 @@ public class BlacklistedAddressHandler extends SimpleChannelInboundHandler<Datag
             final DatagramPacket datagramPacket
     ) {
         InetSocketAddress receivedAddress = (InetSocketAddress) ctx.channel().remoteAddress();
-        if (server.getConfiguration().getBlockedAddresses().contains(receivedAddress.getHostName())) {
-            log.info("{} Tried to ping the server. Connection closed due to address being blacklisted", receivedAddress.getHostName());
+        if (server.getConfiguration().getBlockedAddresses().contains(receivedAddress.getHostString())) {
+            log.info("{} Tried to ping the server. Connection closed due to address being blacklisted", receivedAddress.getHostString());
             ctx.close();
         }
     }
