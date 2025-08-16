@@ -20,7 +20,7 @@ package com.velocitypowered.proxy.network;
 import com.velocitypowered.proxy.VelocityServer;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.HandshakeSessionHandler;
-import com.velocitypowered.proxy.network.websocket.HttpGetSniffer;
+//import com.velocitypowered.proxy.network.websocket.HttpGetSniffer;
 import com.velocitypowered.proxy.protocol.ProtocolUtils;
 import com.velocitypowered.proxy.protocol.StateRegistry;
 import com.velocitypowered.proxy.protocol.netty.BlacklistedAddressHandler;
@@ -69,11 +69,11 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
     protected void initChannel(final Channel ch) {
         ch.pipeline()
           .addLast(BLACKLISTED_ADDRESSES, new BlacklistedAddressHandler(server))
-          .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer((ctx, httpRequest) -> {
-              final String realIp = httpRequest.headers().get("x-real-ip");
-              LOGGER.debug("Received x-real-ip header: {}", realIp);
-              ctx.channel().attr(X_REAL_IP).set(realIp);
-          }))
+//          .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer((ctx, httpRequest) -> {
+//              final String realIp = httpRequest.headers().get("x-real-ip");
+//              LOGGER.debug("Received x-real-ip header: {}", realIp);
+//              ctx.channel().attr(X_REAL_IP).set(realIp);
+//          }))
           .addLast(LEGACY_PING_DECODER, new LegacyPingDecoder())
           .addLast(FRAME_DECODER, new MinecraftVarintFrameDecoder())
           .addLast(

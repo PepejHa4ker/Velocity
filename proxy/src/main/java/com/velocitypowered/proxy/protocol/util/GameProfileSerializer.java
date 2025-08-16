@@ -27,37 +27,40 @@ import com.google.gson.JsonSerializer;
 import com.google.gson.reflect.TypeToken;
 import com.velocitypowered.api.util.GameProfile;
 import com.velocitypowered.api.util.GameProfile.Property;
+
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Serializes {@link GameProfile} instances into JSON.
  */
 public final class GameProfileSerializer implements JsonSerializer<GameProfile>,
-    JsonDeserializer<GameProfile> {
+        JsonDeserializer<GameProfile> {
 
-  public static final GameProfileSerializer INSTANCE = new GameProfileSerializer();
-  private static final Type propertyList = new TypeToken<List<Property>>() {
-  }.getType();
+    public static final GameProfileSerializer INSTANCE = new GameProfileSerializer();
+    private static final Type propertyList = new TypeToken<List<Property>>() {}.getType();
 
-  private GameProfileSerializer() {
+    private GameProfileSerializer() {}
 
-  }
+    @Override
+    public GameProfile deserialize(JsonElement json, Type typeOfT,
+                                   JsonDeserializationContext context) {
 
-  @Override
-  public GameProfile deserialize(JsonElement json, Type typeOfT,
-      JsonDeserializationContext context) {
-    JsonObject obj = json.getAsJsonObject();
-    return new GameProfile(obj.get("id").getAsString(), obj.get("name").getAsString(),
-        context.deserialize(obj.get("properties"), propertyList));
-  }
+        JsonObject obj = json.getAsJsonObject();
+        String id = obj.get("id").getAsString();
+        UUID uid = UUID.fromString(id);
+        String name = obj.get("name").getAsString();
+        List<Property> properties = context.deserialize(obj.get("properties"), propertyList);
+        return new GameProfile(uid, name, properties);
+    }
 
-  @Override
-  public JsonElement serialize(GameProfile src, Type typeOfSrc, JsonSerializationContext context) {
-    JsonObject obj = new JsonObject();
-    obj.add("id", new JsonPrimitive(src.getUndashedId()));
-    obj.add("name", new JsonPrimitive(src.getName()));
-    obj.add("properties", context.serialize(src.getProperties(), propertyList));
-    return obj;
-  }
+    @Override
+    public JsonElement serialize(GameProfile src, Type typeOfSrc, JsonSerializationContext context) {
+        JsonObject obj = new JsonObject();
+        obj.add("id", new JsonPrimitive(src.getUndashedId()));
+        obj.add("name", new JsonPrimitive(src.getName()));
+        obj.add("properties", context.serialize(src.getProperties(), propertyList));
+        return obj;
+    }
 }

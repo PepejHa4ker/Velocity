@@ -24,6 +24,7 @@ tasks {
     }
 
     shadowJar {
+        archiveClassifier.set("")
         transform(Log4j2PluginsCacheFileTransformer::class.java)
 
         // Exclude all the collection types we don"t intend to use

@@ -83,11 +83,11 @@ public class StatusSessionHandler implements MinecraftSessionHandler {
     return true;
   }
 
-  @Override
-  public boolean handle(StatusPingPacket packet) {
-    connection.closeWith(packet);
-    return true;
-  }
+    @Override
+    public boolean handle(StatusPingPacket packet) {
+        connection.closeWith(packet);
+        return true;
+    }
 
   @Override
   public boolean handle(StatusRequestPacket packet) {
@@ -113,14 +113,14 @@ public class StatusSessionHandler implements MinecraftSessionHandler {
     return true;
   }
 
-  @Override
-  public void handleUnknown(ByteBuf buf) {
-    // what even is going on?
-    connection.close(true);
-  }
+    @Override
+    public void handleUnknown(ByteBuf buf) {
+        // what even is going on?
+        connection.close(true);
+    }
 
-  private enum State {
-    AWAITING_REQUEST,
-    RECEIVED_REQUEST
-  }
+    private enum State {
+        AWAITING_REQUEST,
+        RECEIVED_REQUEST
+    }
 }
