@@ -19,6 +19,7 @@ package com.velocitypowered.proxy.connection.client;
 
 import static com.velocitypowered.api.proxy.ConnectionRequestBuilder.Status.ALREADY_CONNECTED;
 import static com.velocitypowered.proxy.connection.util.ConnectionRequestResults.plainResult;
+import static com.velocitypowered.proxy.network.ServerChannelInitializer.X_REAL_IP;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 import com.google.common.base.Preconditions;
@@ -58,6 +59,7 @@ import com.velocitypowered.proxy.connection.player.VelocityResourcePackInfo;
 import com.velocitypowered.proxy.connection.util.ConnectionMessages;
 import com.velocitypowered.proxy.connection.util.ConnectionRequestResults.Impl;
 import com.velocitypowered.proxy.connection.util.VelocityInboundConnection;
+import com.velocitypowered.proxy.network.ServerChannelInitializer;
 import com.velocitypowered.proxy.protocol.StateRegistry;
 import com.velocitypowered.proxy.protocol.netty.MinecraftEncoder;
 import com.velocitypowered.proxy.protocol.packet.ClientSettingsPacket;
@@ -937,7 +939,9 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
         .isPlayerAddressLoggingEnabled();
     String playerIp =
         isPlayerAddressLoggingEnabled ? getRemoteAddress().toString() : "<ip address withheld>";
-    return "[connected player] " + profile.getName() + " (" + playerIp + ")";
+    boolean isUnderVpn = this.connection.getChannel().hasAttr(X_REAL_IP);
+    String connectedMessage = isUnderVpn ? "[connected player (VPN)]" : "[connected player]";
+    return "%s %s (%s)".formatted(connectedMessage, profile.getName(), playerIp);
   }
 
   @Override

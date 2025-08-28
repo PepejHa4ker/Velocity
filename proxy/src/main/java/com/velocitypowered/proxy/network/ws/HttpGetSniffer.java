@@ -39,6 +39,8 @@ public class HttpGetSniffer extends ByteToMessageDecoder {
 
                 ctx.pipeline().remove(this);
             }
+        } else {
+            ctx.pipeline().remove(this);
         }
     }
 }

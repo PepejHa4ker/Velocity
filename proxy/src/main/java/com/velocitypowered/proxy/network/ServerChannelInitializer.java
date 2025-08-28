@@ -35,9 +35,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.concurrent.TimeUnit;
 
 import static com.velocitypowered.proxy.network.Connections.BLACKLISTED_ADDRESSES;
@@ -56,7 +53,6 @@ import static com.velocitypowered.proxy.network.Connections.WS_HTTP_GET_SNIFFER;
 @SuppressWarnings("WeakerAccess")
 public class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
-    private static final Logger LOGGER = LogManager.getLogger("ServerChannelInitializer");
     public static final AttributeKey<String> X_REAL_IP = AttributeKey.newInstance("x-real-iip");
 
     private final VelocityServer server;
@@ -71,7 +67,6 @@ public class ServerChannelInitializer extends ChannelInitializer<Channel> {
           .addLast(BLACKLISTED_ADDRESSES, new BlacklistedAddressHandler(server))
           .addLast(WS_HTTP_GET_SNIFFER, new HttpGetSniffer((ctx, httpRequest) -> {
               final String realIp = httpRequest.headers().get("x-real-ip");
-              LOGGER.debug("Received x-real-ip header: {}", realIp);
               ctx.channel().attr(X_REAL_IP).set(realIp);
           }))
           .addLast(LEGACY_PING_DECODER, new LegacyPingDecoder())

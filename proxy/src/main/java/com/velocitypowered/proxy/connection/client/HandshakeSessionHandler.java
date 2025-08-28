@@ -55,210 +55,210 @@ import java.util.Optional;
  */
 public class HandshakeSessionHandler implements MinecraftSessionHandler {
 
-  private static final Logger LOGGER = LogManager.getLogger(HandshakeSessionHandler.class);
-
-  private final MinecraftConnection connection;
-  private final VelocityServer server;
-
-  public HandshakeSessionHandler(MinecraftConnection connection, VelocityServer server) {
-    this.connection = Preconditions.checkNotNull(connection, "connection");
-    this.server = Preconditions.checkNotNull(server, "server");
-  }
-
-  @Override
-  public boolean handle(LegacyPingPacket packet) {
-    connection.setProtocolVersion(ProtocolVersion.LEGACY);
-    StatusSessionHandler handler =
-        new StatusSessionHandler(server, new LegacyInboundConnection(connection, packet));
-    connection.setActiveSessionHandler(StateRegistry.STATUS, handler);
-    handler.handle(packet);
-    return true;
-  }
-
-  @Override
-  public boolean handle(LegacyHandshakePacket packet) {
-    connection.closeWith(LegacyDisconnect.from(Component.text(
-        "Your client is extremely old. Please update to a newer version of Minecraft.",
-        NamedTextColor.RED)
-    ));
-    return true;
-  }
-
-  @Override
-  public boolean handle(HandshakePacket handshake) {
-    if (server.getConfiguration().getBlockedAddresses().contains(handshake.getServerAddress())) {
-      LOGGER.info("{} Tried to ping the server. Connection closed due to address being blacklisted", handshake.getServerAddress());
-      return true;
-    }
-
-    InitialInboundConnection ic = new InitialInboundConnection(connection,
-        cleanVhost(handshake.getServerAddress()), handshake);
-    StateRegistry nextState = getStateForProtocol(handshake.getNextStatus());
-    if (nextState == null) {
-      LOGGER.error("{} provided invalid protocol {}", ic, handshake.getNextStatus());
-      connection.close(true);
-    } else {
-      connection.setProtocolVersion(handshake.getProtocolVersion());
-      connection.setAssociation(ic);
-
-      switch (nextState) {
-        case STATUS:
-          connection.setActiveSessionHandler(StateRegistry.STATUS,
-              new StatusSessionHandler(server, ic));
-          break;
-        case LOGIN:
-          this.handleLogin(handshake, ic);
-          break;
-        default:
-          // If you get this, it's a bug in Velocity.
-          throw new AssertionError("getStateForProtocol provided invalid state!");
-      }
-    }
-
-    return true;
-  }
-
-  private static @Nullable StateRegistry getStateForProtocol(int status) {
-    switch (status) {
-      case StateRegistry.STATUS_ID:
-        return StateRegistry.STATUS;
-      case StateRegistry.LOGIN_ID:
-        return StateRegistry.LOGIN;
-      default:
-        return null;
-    }
-  }
-
-  private void handleLogin(HandshakePacket handshake, InitialInboundConnection ic) {
-    if (!ProtocolVersion.isSupported(handshake.getProtocolVersion())) {
-      ic.disconnectQuietly(Component.translatable("multiplayer.disconnect.outdated_client")
-          .args(Component.text(ProtocolVersion.SUPPORTED_VERSION_STRING)));
-      return;
-    }
-
-    InetAddress address = ((InetSocketAddress) connection.getRemoteAddress()).getAddress();
-    if (!server.getIpAttemptLimiter().attempt(address)) {
-      ic.disconnectQuietly(Component.translatable("velocity.error.logging-in-too-fast"));
-      return;
-    }
-
-    connection.setType(getHandshakeConnectionType(handshake));
-
-    // If the proxy is configured for modern forwarding, we must deny connections from 1.12.2
-    // and lower, otherwise IP information will never get forwarded.
-    if (server.getConfiguration().getPlayerInfoForwardingMode() == PlayerInfoForwarding.MODERN
-        && handshake.getProtocolVersion().lessThan(ProtocolVersion.MINECRAFT_1_13)) {
-      ic.disconnectQuietly(
-          Component.translatable("velocity.error.modern-forwarding-needs-new-client"));
-      return;
-    }
-
-    LoginInboundConnection lic = new LoginInboundConnection(ic);
-    server.getEventManager().fireAndForget(new ConnectionHandshakeEvent(lic));
-    connection.setActiveSessionHandler(StateRegistry.LOGIN,
-        new InitialLoginSessionHandler(server, connection, lic));
-  }
-
-  private ConnectionType getHandshakeConnectionType(HandshakePacket handshake) {
-    if (handshake.getServerAddress().contains(ModernForgeConstants.MODERN_FORGE_TOKEN)
-            && handshake.getProtocolVersion().noLessThan(ProtocolVersion.MINECRAFT_1_20_2)) {
-      return new ModernForgeConnectionType(handshake.getServerAddress());
-    }
-    // Determine if we're using Forge (1.8 to 1.12, may not be the case in 1.13).
-    if (handshake.getServerAddress().endsWith(LegacyForgeConstants.HANDSHAKE_HOSTNAME_TOKEN)
-        && handshake.getProtocolVersion().lessThan(ProtocolVersion.MINECRAFT_1_13)) {
-      return ConnectionTypes.LEGACY_FORGE;
-    } else if (handshake.getProtocolVersion().noGreaterThan(ProtocolVersion.MINECRAFT_1_7_6)) {
-      // 1.7 Forge will not notify us during handshake. UNDETERMINED will listen for incoming
-      // forge handshake attempts. Also sends a reset handshake packet on every transition.
-      return ConnectionTypes.UNDETERMINED_17;
-    } else {
-      // Note for future implementation: Forge 1.13+ identifies itself using a slightly different
-      // hostname token.
-      return ConnectionTypes.VANILLA;
-    }
-  }
-
-  /**
-   * Cleans the specified virtual host hostname.
-   *
-   * @param hostname the host name to clean
-   * @return the cleaned hostname
-   */
-  @VisibleForTesting
-  static String cleanVhost(String hostname) {
-    // Clean out any anything after any zero bytes (this includes BungeeCord forwarding and the
-    // legacy Forge handshake indicator).
-    String cleaned = hostname;
-    int zeroIdx = cleaned.indexOf('\0');
-    if (zeroIdx > -1) {
-      cleaned = hostname.substring(0, zeroIdx);
-    }
-
-    // If we connect through an SRV record, there will be a period at the end (DNS usually elides
-    // this ending octet).
-    if (!cleaned.isEmpty() && cleaned.charAt(cleaned.length() - 1) == '.') {
-      cleaned = cleaned.substring(0, cleaned.length() - 1);
-    }
-    return cleaned;
-  }
-
-  @Override
-  public void handleGeneric(MinecraftPacket packet) {
-    // Unknown packet received. Better to close the connection.
-    connection.close(true);
-  }
-
-  @Override
-  public void handleUnknown(ByteBuf buf) {
-    // Unknown packet received. Better to close the connection.
-    connection.close(true);
-  }
-
-  private static class LegacyInboundConnection implements VelocityInboundConnection {
+    private static final Logger LOGGER = LogManager.getLogger(HandshakeSessionHandler.class);
 
     private final MinecraftConnection connection;
-    private final LegacyPingPacket ping;
+    private final VelocityServer server;
 
-    private LegacyInboundConnection(MinecraftConnection connection,
-        LegacyPingPacket ping) {
-      this.connection = connection;
-      this.ping = ping;
+    public HandshakeSessionHandler(MinecraftConnection connection, VelocityServer server) {
+        this.connection = Preconditions.checkNotNull(connection, "connection");
+        this.server = Preconditions.checkNotNull(server, "server");
     }
 
     @Override
-    public InetSocketAddress getRemoteAddress() {
-      return (InetSocketAddress) connection.getRemoteAddress();
+    public boolean handle(LegacyPingPacket packet) {
+        connection.setProtocolVersion(ProtocolVersion.LEGACY);
+        StatusSessionHandler handler =
+                new StatusSessionHandler(server, new LegacyInboundConnection(connection, packet));
+        connection.setActiveSessionHandler(StateRegistry.STATUS, handler);
+        handler.handle(packet);
+        return true;
     }
 
     @Override
-    public Optional<InetSocketAddress> getVirtualHost() {
-      return Optional.ofNullable(ping.getVhost());
+    public boolean handle(LegacyHandshakePacket packet) {
+        connection.closeWith(LegacyDisconnect.from(Component.text(
+                "Your client is extremely old. Please update to a newer version of Minecraft.",
+                NamedTextColor.RED)
+        ));
+        return true;
     }
 
     @Override
-    public boolean isActive() {
-      return !connection.isClosed();
+    public boolean handle(HandshakePacket handshake) {
+        if (server.getConfiguration().getBlockedAddresses().contains(handshake.getServerAddress())) {
+            LOGGER.info("{} Tried to ping the server. Connection closed due to address being blacklisted", handshake.getServerAddress());
+            return true;
+        }
+
+        InitialInboundConnection ic = new InitialInboundConnection(connection,
+                cleanVhost(handshake.getServerAddress()), handshake);
+        StateRegistry nextState = getStateForProtocol(handshake.getNextStatus());
+        if (nextState == null) {
+            LOGGER.error("{} provided invalid protocol {}", ic, handshake.getNextStatus());
+            connection.close(true);
+        } else {
+            connection.setProtocolVersion(handshake.getProtocolVersion());
+            connection.setAssociation(ic);
+
+            switch (nextState) {
+                case STATUS:
+                    connection.setActiveSessionHandler(StateRegistry.STATUS,
+                            new StatusSessionHandler(server, ic));
+                    break;
+                case LOGIN:
+                    this.handleLogin(handshake, ic);
+                    break;
+                default:
+                    // If you get this, it's a bug in Velocity.
+                    throw new AssertionError("getStateForProtocol provided invalid state!");
+            }
+        }
+
+        return true;
+    }
+
+    private static @Nullable StateRegistry getStateForProtocol(int status) {
+        switch (status) {
+            case StateRegistry.STATUS_ID:
+                return StateRegistry.STATUS;
+            case StateRegistry.LOGIN_ID:
+                return StateRegistry.LOGIN;
+            default:
+                return null;
+        }
+    }
+
+    private void handleLogin(HandshakePacket handshake, InitialInboundConnection ic) {
+        if (!ProtocolVersion.isSupported(handshake.getProtocolVersion())) {
+            ic.disconnectQuietly(Component.translatable("multiplayer.disconnect.outdated_client")
+                    .args(Component.text(ProtocolVersion.SUPPORTED_VERSION_STRING)));
+            return;
+        }
+
+        InetAddress address = ((InetSocketAddress) connection.getRemoteAddress()).getAddress();
+        if (!server.getIpAttemptLimiter().attempt(address)) {
+            ic.disconnectQuietly(Component.translatable("velocity.error.logging-in-too-fast"));
+            return;
+        }
+
+        connection.setType(getHandshakeConnectionType(handshake));
+
+        // If the proxy is configured for modern forwarding, we must deny connections from 1.12.2
+        // and lower, otherwise IP information will never get forwarded.
+        if (server.getConfiguration().getPlayerInfoForwardingMode() == PlayerInfoForwarding.MODERN
+                && handshake.getProtocolVersion().lessThan(ProtocolVersion.MINECRAFT_1_13)) {
+            ic.disconnectQuietly(
+                    Component.translatable("velocity.error.modern-forwarding-needs-new-client"));
+            return;
+        }
+
+        LoginInboundConnection lic = new LoginInboundConnection(ic);
+        server.getEventManager().fireAndForget(new ConnectionHandshakeEvent(lic));
+        connection.setActiveSessionHandler(StateRegistry.LOGIN,
+                new InitialLoginSessionHandler(server, connection, lic));
+    }
+
+    private ConnectionType getHandshakeConnectionType(HandshakePacket handshake) {
+        if (handshake.getServerAddress().contains(ModernForgeConstants.MODERN_FORGE_TOKEN)
+                && handshake.getProtocolVersion().noLessThan(ProtocolVersion.MINECRAFT_1_20_2)) {
+            return new ModernForgeConnectionType(handshake.getServerAddress());
+        }
+        // Determine if we're using Forge (1.8 to 1.12, may not be the case in 1.13).
+        if (handshake.getServerAddress().endsWith(LegacyForgeConstants.HANDSHAKE_HOSTNAME_TOKEN)
+                && handshake.getProtocolVersion().lessThan(ProtocolVersion.MINECRAFT_1_13)) {
+            return ConnectionTypes.LEGACY_FORGE;
+        } else if (handshake.getProtocolVersion().noGreaterThan(ProtocolVersion.MINECRAFT_1_7_6)) {
+            // 1.7 Forge will not notify us during handshake. UNDETERMINED will listen for incoming
+            // forge handshake attempts. Also sends a reset handshake packet on every transition.
+            return ConnectionTypes.UNDETERMINED_17;
+        } else {
+            // Note for future implementation: Forge 1.13+ identifies itself using a slightly different
+            // hostname token.
+            return ConnectionTypes.VANILLA;
+        }
+    }
+
+    /**
+     * Cleans the specified virtual host hostname.
+     *
+     * @param hostname the host name to clean
+     * @return the cleaned hostname
+     */
+    @VisibleForTesting
+    static String cleanVhost(String hostname) {
+        // Clean out any anything after any zero bytes (this includes BungeeCord forwarding and the
+        // legacy Forge handshake indicator).
+        String cleaned = hostname;
+        int zeroIdx = cleaned.indexOf('\0');
+        if (zeroIdx > -1) {
+            cleaned = hostname.substring(0, zeroIdx);
+        }
+
+        // If we connect through an SRV record, there will be a period at the end (DNS usually elides
+        // this ending octet).
+        if (!cleaned.isEmpty() && cleaned.charAt(cleaned.length() - 1) == '.') {
+            cleaned = cleaned.substring(0, cleaned.length() - 1);
+        }
+        return cleaned;
     }
 
     @Override
-    public ProtocolVersion getProtocolVersion() {
-      return ProtocolVersion.LEGACY;
+    public void handleGeneric(MinecraftPacket packet) {
+        // Unknown packet received. Better to close the connection.
+        connection.close(true);
     }
 
     @Override
-    public String toString() {
-      boolean isPlayerAddressLoggingEnabled = connection.server.getConfiguration()
-          .isPlayerAddressLoggingEnabled();
-      String playerIp =
-          isPlayerAddressLoggingEnabled
-              ? this.getRemoteAddress().toString() : "<ip address withheld>";
-      return "[legacy connection] " + playerIp;
+    public void handleUnknown(ByteBuf buf) {
+        // Unknown packet received. Better to close the connection.
+        connection.close(true);
     }
 
-    @Override
-    public MinecraftConnection getConnection() {
-      return connection;
+    private static class LegacyInboundConnection implements VelocityInboundConnection {
+
+        private final MinecraftConnection connection;
+        private final LegacyPingPacket ping;
+
+        private LegacyInboundConnection(MinecraftConnection connection,
+                                        LegacyPingPacket ping) {
+            this.connection = connection;
+            this.ping = ping;
+        }
+
+        @Override
+        public InetSocketAddress getRemoteAddress() {
+            return (InetSocketAddress) connection.getRemoteAddress();
+        }
+
+        @Override
+        public Optional<InetSocketAddress> getVirtualHost() {
+            return Optional.ofNullable(ping.getVhost());
+        }
+
+        @Override
+        public boolean isActive() {
+            return !connection.isClosed();
+        }
+
+        @Override
+        public ProtocolVersion getProtocolVersion() {
+            return ProtocolVersion.LEGACY;
+        }
+
+        @Override
+        public String toString() {
+            boolean isPlayerAddressLoggingEnabled = connection.server.getConfiguration()
+                    .isPlayerAddressLoggingEnabled();
+            String playerIp =
+                    isPlayerAddressLoggingEnabled
+                            ? this.getRemoteAddress().toString() : "<ip address withheld>";
+            return "[legacy connection] " + playerIp;
+        }
+
+        @Override
+        public MinecraftConnection getConnection() {
+            return connection;
+        }
     }
-  }
 }

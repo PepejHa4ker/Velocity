@@ -173,7 +173,6 @@ public class InitialLoginSessionHandler implements MinecraftSessionHandler {
 
     @Override
     public boolean handle(EncryptionResponsePacket packet) {
-        logger.info("Received encryption response from {} ({})", login.getUsername(), mcConnection.getRemoteAddress());
         assertState(LoginState.ENCRYPTION_REQUEST_SENT);
         this.currentState = LoginState.ENCRYPTION_RESPONSE_RECEIVED;
         ServerLoginPacket login = this.login;
